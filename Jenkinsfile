@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        NETLIFY_SITE_ID = 'PUT YOUR NETLIFY SITE ID HERE'
+        NETLIFY_SITE_ID = 'a784f940-948b-4f7f-96c9-f5def4f42f2c'
         NETLIFY_AUTH_TOKEN = credentials('netlify-token')
     }
 
@@ -75,8 +75,32 @@ pipeline {
                 }
             }
         }
+        stage('Deploy staging') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh '''
+                    npm install netlify-cli
+                    node_modules/.bin/netlify --version
+                    echo "Deploying to staging. Site ID: $NETLIFY_SITE_ID"
+                    node_modules/.bin/netlify status
+                    node_modules/.bin/netlify deploy --dir=build 
+                '''
+            }
+        }
+        stage('Approval') {
+            steps {
+                timeout(time: 15, unit: 'MINUTES') {
+                    input message: ' Ready to deploy?', ok: 'Yes, i am sure'
+                }
+            }
+        }
 
-        stage('Deploy') {
+        stage('Deploy prod') {
             agent {
                 docker {
                     image 'node:18-alpine'
@@ -103,7 +127,7 @@ pipeline {
             }
 
             environment {
-                CI_ENVIRONMENT_URL = 'PUT YOUR NETLIFY SITE URL HERE'
+                CI_ENVIRONMENT_URL = 'https://cosmic-faun-5a515e.netlify.app/'
             }
 
             steps {
